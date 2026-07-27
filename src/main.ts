@@ -42,6 +42,16 @@ import { autoUpdater } from 'electron-updater'
 
 /** Where the game actually lives. Overridable so a dev build can point local. */
 const SITE = process.env.ARMADA_SITE ?? 'https://armada-gray.vercel.app'
+
+/**
+ * How the game recognises its own client.
+ *
+ * Armada is a game you install. The site will not open the world to a plain
+ * browser, and this string is how it tells the difference. It is not a secret
+ * and it is not security — anyone determined can forge a user agent. It is a
+ * product boundary, and the only thing it has to survive is honesty.
+ */
+const CLIENT_UA = 'Armada-Desktop/1'
 const HEALTH = process.env.ARMADA_HEALTH ?? 'https://armada-server-production.up.railway.app/health'
 
 /**
@@ -163,7 +173,12 @@ function createGame(): void {
 
   if (saved.fullscreen) game.setFullScreen(true)
 
-  void game.loadURL(`${SITE}/play`)
+  // Sent on the navigation AND pinned on the session, so every later request —
+  // the reconnect, the ticket fetch, an auth redirect — carries it too. Setting
+  // it only on the first load is the classic way this breaks the moment
+  // somebody signs in.
+  game.webContents.setUserAgent(`${game.webContents.getUserAgent()} ${CLIENT_UA}`)
+  void game.loadURL(`${SITE}/play`, { userAgent: game.webContents.getUserAgent() })
 
   game.once('ready-to-show', () => {
     game?.show()
