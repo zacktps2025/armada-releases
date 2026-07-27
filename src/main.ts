@@ -32,8 +32,23 @@ import { autoUpdater } from 'electron-updater'
  *   4. It is an icon you double click, not a URL someone has to find.
  */
 
-/** Where the game actually lives. Overridable so a dev build can point local. */
-const SITE = process.env.ARMADA_SITE ?? 'https://armada-gray.vercel.app'
+/**
+ * Where the game lives, in order of preference.
+ *
+ * The domain first, because that is the name the game has. The Vercel host
+ * second, because it is the same deployment and it cannot be broken by a DNS
+ * record — and an installer already on somebody's machine is the worst possible
+ * place to discover a nameserver problem.
+ *
+ * Resolved once at startup by asking each in turn, so a launcher shipped today
+ * keeps working if the domain moves, lapses, or was never propagated where this
+ * particular player is sitting.
+ */
+const SITES = process.env.ARMADA_SITE
+  ? [process.env.ARMADA_SITE]
+  : ['https://armadagame.io', 'https://armada-gray.vercel.app']
+
+let SITE = SITES[0]!
 
 /**
  * How the game recognises its own client.
@@ -45,6 +60,37 @@ const SITE = process.env.ARMADA_SITE ?? 'https://armada-gray.vercel.app'
  */
 const CLIENT_UA = 'Armada-Desktop/1'
 const HEALTH = process.env.ARMADA_HEALTH ?? 'https://armada-server-production.up.railway.app/health'
+
+/**
+ * Pick the first host that answers.
+ *
+ * Deliberately a HEAD against the download page rather than the game: /play
+ * redirects to sign-in, and following that just to learn whether DNS resolves
+ * is a round trip spent on nothing.
+ */
+async function resolveSite(): Promise<void> {
+  for (const candidate of SITES) {
+    const control = new AbortController()
+    const timer = setTimeout(() => control.abort(), 4000)
+    try {
+      const response = await fetch(`${candidate}/download`, {
+        method: 'HEAD',
+        signal: control.signal,
+      })
+      if (response.ok) {
+        SITE = candidate
+        return
+      }
+    } catch {
+      // Unreachable. Try the next one.
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+  // Nothing answered. Keep the first and let the launcher report it honestly
+  // rather than silently pointing somewhere that also will not work.
+  console.error('[armada] No host answered; falling back to', SITE)
+}
 
 /**
  * GPU switches. These must be set before `app.whenReady`, which is why they are
@@ -319,7 +365,9 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(() => {
     // No File/Edit/View menu. This is a game.
     Menu.setApplicationMenu(null)
-    createLauncher()
+    // Before any window: the launcher's Play button opens SITE, so it has to be
+    // decided before there is a button to press.
+    void resolveSite().finally(() => createLauncher())
     checkForUpdates()
 
     app.on('activate', () => {
