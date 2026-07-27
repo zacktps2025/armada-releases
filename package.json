@@ -1,0 +1,25 @@
+{
+  "name": "@armada/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Armada",
+  "author": "TPS Digital Services",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "pnpm build && electron .",
+    "dist:mac": "pnpm build && electron-builder --mac --publish never",
+    "dist:win": "pnpm build && electron-builder --win --publish never",
+    "release": "pnpm build && electron-builder --win --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.3"
+  }
+}

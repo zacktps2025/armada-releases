@@ -1,0 +1,54 @@
+appId: gg.armada.client
+productName: Armada
+copyright: © TPS Digital Services
+
+directories:
+  output: release
+  buildResources: build
+
+# Only the compiled shell and the launcher page. The game itself is served, so
+# there is nothing else to package — which is why the installer is small enough
+# to hand someone over Discord.
+files:
+  - dist/**/*
+  - launcher/**/*
+  - package.json
+
+# Ship a Release build of Electron and strip what a game never uses.
+electronLanguages:
+  - en-US
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # The ROG Ally X is x64 Windows 11. arm64 is not a target until it has to be.
+  artifactName: Armada-Setup.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Armada
+  # An installer that finishes and does nothing feels broken.
+  runAfterFinish: true
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+  category: public.app-category.games
+  artifactName: Armada-${arch}.${ext}
+
+# Auto-update reads from here. Set `owner` and `repo` once the repository
+# exists on GitHub; until then `pnpm dist:win` still builds a working installer
+# with `--publish never`, it simply will not know where to look for the next one.
+publish:
+  provider: github
+  owner: REPLACE_ME
+  repo: armada

@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;"
+    />
+    <title>Armada</title>
+    <style>
+      /*
+       * The launcher wears the game's face, not an installer's.
+       *
+       * Same palette as apps/web/lib/palette.ts and the same panel construction
+       * as the HUD, because this is the first thing anyone sees and it has to
+       * promise the thing behind it. Colours are duplicated here rather than
+       * imported: this page is loaded from disk with a strict CSP and no
+       * bundler, and a launcher that fails to paint because a stylesheet did
+       * not resolve is worse than two copies of six hex values.
+       */
+      :root {
+        --deep: #070a14;
+        --panel-dark: #12141c;
+        --panel-base: #232733;
+        --panel-light: #39404f;
+        --brass: #c6a15b;
+        --brass-dim: #7a6234;
+        --aether: #7fe9ff;
+        --amber: #ffae52;
+        --ink: #e8e4d8;
+        --ink-muted: #8b93a7;
+        --danger: #e86a5c;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background:
+          radial-gradient(120% 70% at 50% 0%, rgba(127, 233, 255, 0.1), transparent 62%),
+          radial-gradient(90% 50% at 50% 100%, rgba(255, 174, 82, 0.05), transparent 60%),
+          var(--deep);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        user-select: none;
+        cursor: default;
+        overflow: hidden;
+      }
+
+      /* The whole top of the window drags, so a frameless build still moves. */
+      header {
+        -webkit-app-region: drag;
+        padding: 46px 34px 0;
+        text-align: center;
+      }
+
+      .eyebrow {
+        font-size: 10px;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: var(--brass);
+      }
+
+      h1 {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 52px;
+        font-weight: 400;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        text-indent: 0.28em;
+        line-height: 1;
+        margin: 14px 0 10px;
+        text-shadow: 0 0 44px rgba(127, 233, 255, 0.3);
+      }
+
+      .tagline {
+        color: var(--ink-muted);
+        font-size: 13px;
+        line-height: 1.6;
+        max-width: 30ch;
+        margin: 0 auto;
+      }
+
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        gap: 14px;
+        padding: 0 34px 30px;
+      }
+
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        justify-content: center;
+        font-size: 12px;
+        color: var(--ink-muted);
+        min-height: 18px;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--ink-muted);
+        box-shadow: 0 0 9px currentColor;
+      }
+      .dot.up {
+        background: #7fdc8a;
+      }
+      .dot.down {
+        background: var(--danger);
+      }
+      .dot.wait {
+        background: var(--amber);
+        animation: pulse 1.1s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 0.35;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      button {
+        width: 100%;
+        padding: 14px 18px;
+        background: linear-gradient(180deg, var(--panel-light), var(--panel-base));
+        border: 2px solid var(--panel-dark);
+        box-shadow:
+          inset 0 0 0 2px var(--brass-dim),
+          0 3px 0 rgba(0, 0, 0, 0.5);
+        border-radius: 3px;
+        color: var(--brass);
+        font: inherit;
+        font-size: 13px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition:
+          transform 0.08s ease,
+          box-shadow 0.08s ease,
+          color 0.14s ease;
+      }
+
+      button:hover:not(:disabled) {
+        color: var(--aether);
+        box-shadow:
+          inset 0 0 0 2px var(--aether),
+          0 3px 0 rgba(0, 0, 0, 0.5);
+      }
+
+      /* The button physically goes down, exactly like the HUD's. */
+      button:active:not(:disabled) {
+        transform: translateY(2px);
+        box-shadow:
+          inset 0 0 0 2px var(--aether),
+          0 1px 0 rgba(0, 0, 0, 0.5);
+      }
+
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+
+      .secondary {
+        display: flex;
+        gap: 10px;
+      }
+
+      .secondary button {
+        padding: 8px 12px;
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        color: var(--ink-muted);
+        box-shadow:
+          inset 0 0 0 1px var(--panel-light),
+          0 2px 0 rgba(0, 0, 0, 0.4);
+      }
+
+      .secondary button:hover:not(:disabled) {
+        color: var(--ink);
+        box-shadow:
+          inset 0 0 0 1px var(--brass-dim),
+          0 2px 0 rgba(0, 0, 0, 0.4);
+      }
+
+      .note {
+        text-align: center;
+        font-size: 11px;
+        color: var(--ink-muted);
+        min-height: 15px;
+      }
+
+      .note.warn {
+        color: var(--amber);
+      }
+
+      footer {
+        padding: 0 34px 16px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        color: rgba(139, 147, 167, 0.55);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="eyebrow">TPS Digital Services</p>
+      <h1>Armada</h1>
+      <p class="tagline">
+        A world of floating isles that keeps turning whether or not you are watching.
+      </p>
+    </header>
+
+    <main>
+      <div class="status">
+        <span class="dot wait" id="dot"></span>
+        <span id="status">Reaching the sky…</span>
+      </div>
+
+      <button id="play" disabled>Play</button>
+
+      <p class="note" id="note"></p>
+
+      <div class="secondary">
+        <button id="signout">Sign out</button>
+        <button id="quit">Quit</button>
+      </div>
+    </main>
+
+    <footer>
+      <span id="version">—</span>
+      <span>Prime</span>
+    </footer>
+
+    <script>
+      const $ = (id) => document.getElementById(id)
+      const bridge = window.armada
+
+      let online = false
+
+      function setStatus(state, text) {
+        $('dot').className = `dot ${state}`
+        $('status').textContent = text
+      }
+
+      function note(text, warn) {
+        $('note').textContent = text ?? ''
+        $('note').className = warn ? 'note warn' : 'note'
+      }
+
+      async function refresh() {
+        setStatus('wait', 'Reaching the sky…')
+        const result = await bridge.status()
+        online = result.online
+
+        if (!online) {
+          setStatus('down', 'The sky is unreachable')
+          note('The server is not answering. It may be restarting — try again shortly.', true)
+          $('play').disabled = true
+          return
+        }
+
+        const count = result.players ?? 0
+        setStatus(
+          'up',
+          count === 0
+            ? 'The world is turning · nobody aloft'
+            : `The world is turning · ${count} aloft`,
+        )
+        note('')
+        $('play').disabled = false
+      }
+
+      $('play').addEventListener('click', () => {
+        if (!online) return
+        $('play').disabled = true
+        setStatus('wait', 'Opening the sky…')
+        bridge.play()
+      })
+
+      $('quit').addEventListener('click', () => bridge.quit())
+
+      $('signout').addEventListener('click', async () => {
+        await bridge.signOut()
+        note('Signed out. The next launch will ask who you are.')
+      })
+
+      bridge.onOffline(() => {
+        setStatus('down', 'Lost the connection')
+        note('The game could not be reached. Check your network and try again.', true)
+        $('play').disabled = false
+        void refresh()
+      })
+
+      bridge.onUpdateReady(({ version }) => {
+        note(`Version ${version} is ready. It installs the next time you quit.`)
+      })
+
+      bridge.version().then((v) => {
+        $('version').textContent = `v${v}`
+      })
+
+      void refresh()
+      // Re-check while the launcher sits open, so a server that comes back up
+      // turns the button on without anyone restarting anything.
+      setInterval(() => {
+        if (!document.hidden) void refresh()
+      }, 15000)
+    </script>
+  </body>
+</html>
