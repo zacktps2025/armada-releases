@@ -1,15 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import {
-  BrowserWindow,
-  Menu,
-  app,
-  dialog,
-  ipcMain,
-  session,
-  shell,
-} from 'electron'
+import { BrowserWindow, Menu, app, dialog, ipcMain, session, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 
 /**
@@ -106,10 +98,7 @@ function loadBounds(): Bounds {
 function saveBounds(window: BrowserWindow): void {
   try {
     const bounds = window.isFullScreen() ? loadBounds() : window.getBounds()
-    writeFileSync(
-      boundsFile(),
-      JSON.stringify({ ...bounds, fullscreen: window.isFullScreen() }),
-    )
+    writeFileSync(boundsFile(), JSON.stringify({ ...bounds, fullscreen: window.isFullScreen() }))
   } catch {
     // Losing the remembered size is not worth interrupting anyone over.
   }
