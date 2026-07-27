@@ -1,0 +1,66 @@
+name: Launcher
+
+# Builds the Armada launcher and publishes the installers to this repository's
+# releases.
+#
+# This workflow lives in the PUBLIC releases repository, not in the private
+# monorepo, and that is the whole trick. Publishing from the private side would
+# need a personal access token with write access to a second repository: a
+# credential to mint, store, rotate and eventually forget about. Here the
+# built-in GITHUB_TOKEN already has exactly the permission needed, because the
+# release it writes is its own.
+#
+# It is safe to do that because the launcher is a shell. It opens a window and
+# points it at a URL. No simulation, no balance numbers, no server code —
+# publishing it reveals nothing the game keeps private.
+#
+# To ship a build:
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# electron-builder creates the release as a draft, so there is always a look
+# before players get it. Publishing the draft is the moment /api/download/win
+# and the auto-updater both start serving the new version.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      # Windows failing must not throw away the macOS build, or the other way.
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            command: release:win
+          - os: macos-latest
+            command: release:mac
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # No frozen lockfile: this package is extracted from a monorepo whose
+      # lockfile covers four workspaces, so it does not travel with it.
+      - name: Install
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build and publish
+        run: pnpm ${{ matrix.command }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

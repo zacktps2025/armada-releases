@@ -45,10 +45,12 @@ mac:
   category: public.app-category.games
   artifactName: Armada-${arch}.${ext}
 
-# Auto-update reads from here. Set `owner` and `repo` once the repository
-# exists on GitHub; until then `pnpm dist:win` still builds a working installer
-# with `--publish never`, it simply will not know where to look for the next one.
+# Auto-update reads from the PUBLIC releases repository, never from the private
+# source one. Release assets on a private repo need an authenticated token to
+# download, so pointing the updater there would mean shipping a credential
+# inside the app — which is both a leak and the kind of thing that quietly
+# stops working when the token rotates.
 publish:
   provider: github
-  owner: REPLACE_ME
-  repo: armada
+  owner: zacktps2025
+  repo: armada-releases
